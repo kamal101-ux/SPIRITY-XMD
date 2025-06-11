@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const fetch = require('node-fetch');
-const config = require('../config');    
+const config = require('../config');
 const { cmd } = require('../command');
 
 cmd({
@@ -17,13 +17,19 @@ async (conn, mek, m, { from, reply }) => {
 
     try {
         // Extract username and repo name from the URL
-        const [, username, repoName] = githubRepoURL.match(/github\.com\/([^/]+)\/([^/]+)/);
+        const match = githubRepoURL.match(/github\.com\/([^/]+)\/([^/]+)/);
+        if (!match) {
+            return reply("❌ Impossible de lire l'URL du dépôt GitHub.");
+        }
+        const [, username, repoName] = match;
 
         // Fetch repository details using GitHub API
-        const response = await fetch(`https://api.github.com/repos/${username}/${repoName}`);
-        
+        const apiUrl = `https://api.github.com/repos/${username}/${repoName}`;
+        console.log("Fetching:", apiUrl);
+
+        const response = await fetch(apiUrl);
         if (!response.ok) {
-            throw new Error(`GitHub API request failed with status ${response.status}`);
+            return reply(`❌ GitHub API request failed with status ${response.status}`);
         }
 
         const repoData = await response.json();
@@ -35,7 +41,7 @@ async (conn, mek, m, { from, reply }) => {
         await conn.sendMessage(from, {
             image: { url: `https://files.catbox.moe/zmhz85.jpg` },
             caption: formattedInfo,
-            contextInfo: { 
+            contextInfo: {
                 mentionedJid: [m.sender],
                 forwardingScore: 999,
                 isForwarded: true,
@@ -49,11 +55,14 @@ async (conn, mek, m, { from, reply }) => {
 
         // Send local audio file
         const audioPath = path.join(__dirname, '../assets/menu.m4a');
+        if (!fs.existsSync(audioPath)) {
+            return reply("❌ Le fichier audio menu.m4a est introuvable.");
+        }
         await conn.sendMessage(from, {
             audio: fs.readFileSync(audioPath),
             mimetype: 'audio/mp4',
             ptt: true,
-            contextInfo: { 
+            contextInfo: {
                 mentionedJid: [m.sender],
                 forwardingScore: 999,
                 isForwarded: true,
@@ -67,6 +76,6 @@ async (conn, mek, m, { from, reply }) => {
 
     } catch (error) {
         console.error("Error in repo command:", error);
-        reply("Sorry, something went wrong while fetching the repository information. Please try again later.");
+        reply(`❌ Erreur lors de la récupération des infos du repo : ${error.message}`);
     }
 });
