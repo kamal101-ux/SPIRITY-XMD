@@ -13,7 +13,7 @@ cmd({
     filename: __filename,
 },
 async (conn, mek, m, { from, reply }) => {
-    const githubRepoURL = 'https://github.com/DARKMAN226/SPIRITY-XMD.git';
+    const githubRepoURL = 'https://github.com/DARKMAN226/SPIRITY-XMD';
 
     try {
         // Extract username and repo name from the URL
