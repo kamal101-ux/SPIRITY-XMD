@@ -33,10 +33,6 @@
 <p align="center">
   <img src="https://i.imgur.com/LyHic3i.gif" />
 </p>
-
-<img src="https://img.shields.io/github/forks/Azahacko/SPIRITY-XMD?style=flat&color=1E88E5&logo=github&logoColor=white&label=Forks" alt="GitHub Forks" />
-
-
 <p align="center">
   <img src="https://i.imgur.com/LyHic3i.gif" />
 </p>
