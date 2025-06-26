@@ -1,55 +1,59 @@
 const { cmd } = require('../command');
+const config = require('../config');
 
 cmd({
-    pattern: "add",
-    alias: ["a", "invite"],
-    desc: "Ajoute un ou plusieurs membres au groupe",
-    category: "admin",
-    react: "➕",
-    filename: __filename
-},
-async (conn, mek, m, {
-    from, q, isGroup, isBotAdmins, reply, senderNumber
+  pattern: "add ?(.*)?",
+  alias: ["invite", "bring"],
+  desc: "Ajoute un membre au groupe",
+  category: "admin",
+  react: "➕",
+  filename: __filename
+}, async (conn, mek, m, {
+  from,
+  q,
+  sender,
+  isGroup,
+  isBotAdmins,
+  isAdmins,
+  reply
 }) => {
-    if (!isGroup) return reply("❌ Cette commande ne fonctionne qu'en groupe.");
+  try {
+    if (!isGroup) return reply("❌ Cette commande est uniquement disponible dans les groupes.");
 
-    const botOwner = conn.user.id.split(":")[0];
-    if (senderNumber !== botOwner) return reply("❌ Seul le propriétaire du bot peut utiliser cette commande.");
+    const senderIsOwner = sender === config.OWNER_NUMBER + "@s.whatsapp.net";
+    const senderIsSudo = config.SUDO?.includes(sender);
 
-    if (!isBotAdmins) return reply("❌ Je dois être admin pour ajouter des membres.");
-
-    if (!q) return reply("❌ Fournis un ou plusieurs numéros (ex : `.add 226XXXXXXXX 229YYYYYYYY`).");
-
-    // Séparer les numéros par espace
-    const numbers = q.split(/\s+/).map(n => n.replace(/[^0-9]/g, '')).filter(n => n.length >= 6);
-
-    if (numbers.length === 0) return reply("❌ Aucun numéro valide détecté.");
-
-    let results = [];
-
-    for (const number of numbers) {
-        const jid = number + "@s.whatsapp.net";
-        try {
-            const res = await conn.groupParticipantsUpdate(from, [jid], "add");
-            const status = res?.[0]?.status;
-
-            if (status === 200) {
-                results.push(`✅ @${number} ajouté avec succès`);
-            } else if (status === 403) {
-                const link = await conn.groupInviteCode(from);
-                results.push(`⚠️ @${number} a refusé l’ajout → Lien : https://chat.whatsapp.com/${link}`);
-            } else if (status === 408) {
-                results.push(`❌ @${number} n’est pas sur WhatsApp`);
-            } else {
-                results.push(`❌ @${number} → erreur (code ${status})`);
-            }
-        } catch (err) {
-            console.error(`Erreur avec ${number} :`, err);
-            results.push(`❌ @${number} → erreur interne`);
-        }
+    if (!senderIsOwner && !senderIsSudo && !isAdmins) {
+      return reply("⛔ Seuls les administrateurs peuvent utiliser cette commande.");
     }
 
-    // Répondre avec un résumé
-    const message = results.join("\n");
-    reply(message);
+    if (!isBotAdmins) {
+      return reply("🤖 Je dois être administrateur pour ajouter des membres.");
+    }
+
+    const numbers = q.match(/\d{6,}/g);
+    if (!numbers || numbers.length === 0) {
+      return reply("📥 Veuillez fournir au moins un numéro valide.\nExemple : `.add 22612345678 22998765432`");
+    }
+
+    let success = 0, failed = 0;
+
+    for (const num of numbers) {
+      const jid = `${num}@s.whatsapp.net`;
+      try {
+        await conn.groupParticipantsUpdate(from, [jid], 'add');
+        success++;
+      } catch (e) {
+        console.error(`Erreur ajout ${jid}:`, e);
+        failed++;
+      }
+    }
+
+    let msg = `➕ *Résultat :*\n✅ Ajoutés : ${success}\n❌ Échecs : ${failed}`;
+    reply(msg);
+
+  } catch (error) {
+    console.error("Erreur commande add:", error);
+    reply("❌ Une erreur est survenue lors de l'ajout.");
+  }
 });
