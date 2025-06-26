@@ -41,7 +41,7 @@ async (conn, mek, m, { from, participants, reply, isGroup, senderNumber, groupAd
             teks += `${randomEmoji} @${admin.split('@')[0]}\n`;
         }
 
-        teks += "└──✪ SPIRITY ┃ XMD ✪──";
+        teks += "└──✪ NICEBOY ┃ XD ✪──";
 
         conn.sendMessage(from, { text: teks, mentions: admins }, { quoted: mek });
 
@@ -50,3 +50,4 @@ async (conn, mek, m, { from, participants, reply, isGroup, senderNumber, groupAd
         reply(`❌ *Error Occurred !!*\n\n${e.message || e}`);
     }
 });
+
