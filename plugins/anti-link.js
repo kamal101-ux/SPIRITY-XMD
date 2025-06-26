@@ -1,8 +1,51 @@
 const { cmd } = require('../command');
-const config = require("../config");
+const fs = require('fs');
+const path = require('path');
+const config = require('../config');
 
+const dbFile = path.join(__dirname, '../database/antilink.json');
+if (!fs.existsSync('./database')) fs.mkdirSync('./database');
+let antilinkDB = fs.existsSync(dbFile) ? JSON.parse(fs.readFileSync(dbFile)) : {};
+const saveDB = () => fs.writeFileSync(dbFile, JSON.stringify(antilinkDB, null, 2));
+
+if (!global.warnings) global.warnings = {};
+
+// 📘 Commande admin .antilink on / off
 cmd({
-  'on': "body"
+  pattern: "antilink ?(.*)?",
+  alias: ["antilinks"],
+  desc: "Activer ou désactiver le blocage de liens pour ce groupe",
+  category: "admin",
+  react: "🚫",
+  filename: __filename
+}, async (conn, mek, m, { reply, isGroup, isAdmins }) => {
+  if (!isGroup) return reply("❌ Cette commande ne fonctionne qu'en groupe.");
+  if (!isAdmins) return reply("🚫 Seuls les admins peuvent activer/désactiver l'antilien.");
+
+  const q = m.body.split(' ')[1];
+  if (!q) return reply("📝 Utilisation : `.antilink on` ou `.antilink off`");
+
+  if (q === "on") {
+    antilinkDB[m.from] = true;
+    saveDB();
+    return reply("✅ Blocage des liens activé dans ce groupe.");
+  } else if (q === "off") {
+    delete antilinkDB[m.from];
+    saveDB();
+    return reply("❎ Blocage des liens désactivé dans ce groupe.");
+  } else {
+    return reply("📝 Utilisation : `.antilink on` ou `.antilink off`");
+  }
+});
+
+// 👁‍🗨 Détection automatique de liens
+cmd({
+  pattern: ".*",
+  fromMe: false,
+  onlyInGroup: true,
+  desc: "Système de blocage de liens",
+  hidden: true,
+  filename: __filename
 }, async (conn, m, store, {
   from,
   body,
@@ -13,80 +56,46 @@ cmd({
   reply
 }) => {
   try {
-    // Initialize warnings if not exists
-    if (!global.warnings) {
-      global.warnings = {};
-    }
+    if (!isGroup || isAdmins || !isBotAdmins) return;
 
-    // Only act in groups where bot is admin and sender isn't admin
-    if (!isGroup || isAdmins || !isBotAdmins) {
-      return;
-    }
+    const groupEnabled = antilinkDB[from];
+    const globallyEnabled = config.ANTI_LINK === 'true';
+    if (!groupEnabled && !globallyEnabled) return;
 
-    // List of link patterns to detect
     const linkPatterns = [
-      /https?:\/\/(?:chat\.whatsapp\.com|wa\.me)\/\S+/gi, // WhatsApp links
-      /https?:\/\/(?:api\.whatsapp\.com|wa\.me)\/\S+/gi,  // WhatsApp API links
-      /wa\.me\/\S+/gi,                                    // WhatsApp.me links
-      /https?:\/\/(?:t\.me|telegram\.me)\/\S+/gi,         // Telegram links
-      /https?:\/\/(?:www\.)?\.com\/\S+/gi,                // Generic .com links
-      /https?:\/\/(?:www\.)?twitter\.com\/\S+/gi,         // Twitter links
-      /https?:\/\/(?:www\.)?linkedin\.com\/\S+/gi,        // LinkedIn links
-      /https?:\/\/(?:whatsapp\.com|channel\.me)\/\S+/gi,  // Other WhatsApp/channel links
-      /https?:\/\/(?:www\.)?reddit\.com\/\S+/gi,          // Reddit links
-      /https?:\/\/(?:www\.)?discord\.com\/\S+/gi,         // Discord links
-      /https?:\/\/(?:www\.)?twitch\.tv\/\S+/gi,           // Twitch links
-      /https?:\/\/(?:www\.)?vimeo\.com\/\S+/gi,           // Vimeo links
-      /https?:\/\/(?:www\.)?dailymotion\.com\/\S+/gi,     // Dailymotion links
-      /https?:\/\/(?:www\.)?medium\.com\/\S+/gi           // Medium links
+      /https?:\/\/(?:chat\.whatsapp\.com|wa\.me)\/\S+/gi,
+      /https?:\/\/(?:t\.me|telegram\.me)\/\S+/gi,
+      /https?:\/\/(?:www\.)?[\w\-]+\.(com|net|org|io|me|tv|xyz)\/\S+/gi
     ];
 
-    // Check if message contains any forbidden links
-    const containsLink = linkPatterns.some(pattern => pattern.test(body));
+    const hasLink = linkPatterns.some(p => p.test(body));
+    if (!hasLink) return;
 
-    // Only proceed if anti-link is enabled and link is detected
-    if (containsLink && config.ANTI_LINK === 'true') {
-      console.log(`Link detected from ${sender}: ${body}`);
+    console.log(`🔗 Lien détecté de ${sender}: ${body}`);
 
-      // Try to delete the message
-      try {
-        await conn.sendMessage(from, {
-          delete: m.key
-        });
-        console.log(`Message deleted: ${m.key.id}`);
-      } catch (error) {
-        console.error("Failed to delete message:", error);
-      }
-
-      // Update warning count for user
-      global.warnings[sender] = (global.warnings[sender] || 0) + 1;
-      const warningCount = global.warnings[sender];
-
-      // Handle warnings
-      if (warningCount < 4) {
-        // Send warning message
-        await conn.sendMessage(from, {
-          text: `‎*⚠️LINKS ARE NOT ALLOWED⚠️*\n` +
-                `*╭────⬡ WARNING ⬡────*\n` +
-                `*├▢ USER :* @${sender.split('@')[0]}!\n` +
-                `*├▢ COUNT : ${warningCount}*\n` +
-                `*├▢ REASON : LINK SENDING*\n` +
-                `*├▢ WARN LIMIT : 3*\n` +
-                `*╰────────────────*`,
-          mentions: [sender]
-        });
-      } else {
-        // Remove user if they exceed warning limit
-        await conn.sendMessage(from, {
-          text: `@${sender.split('@')[0]} *HAS BEEN REMOVED - WARN LIMIT EXCEEDED!*`,
-          mentions: [sender]
-        });
-        await conn.groupParticipantsUpdate(from, [sender], "remove");
-        delete global.warnings[sender];
-      }
+    try {
+      await conn.sendMessage(from, { delete: m.key });
+    } catch (err) {
+      console.error("❌ Impossible de supprimer le message :", err);
     }
-  } catch (error) {
-    console.error("Anti-link error:", error);
-    reply("❌ An error occurred while processing the message.");
+
+    global.warnings[sender] = (global.warnings[sender] || 0) + 1;
+    const warnCount = global.warnings[sender];
+
+    if (warnCount < 3) {
+      await conn.sendMessage(from, {
+        text: `⚠️ *Lien interdit détecté !*\n👤 Utilisateur : @${sender.split('@')[0]}\n🧾 Avertissement : ${warnCount}/3`,
+        mentions: [sender]
+      });
+    } else {
+      await conn.sendMessage(from, {
+        text: `🚫 *@${sender.split('@')[0]} a été expulsé pour avoir dépassé 3 avertissements.*`,
+        mentions: [sender]
+      });
+      await conn.groupParticipantsUpdate(from, [sender], 'remove');
+      delete global.warnings[sender];
+    }
+  } catch (e) {
+    console.error("❌ Erreur Antilink :", e);
   }
 });
