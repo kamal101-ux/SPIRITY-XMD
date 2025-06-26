@@ -348,6 +348,7 @@ async (conn, mek, m, { from, quoted, body, isCmd, command, args, q, isGroup, sen
 ┃◈┃• hidetag
 ┃◈┃• tagall
 ┃◈┃• tagadmins
+┃◈┃• warns
 ┃◈└───────────┈⊷
 ╰──────────────┈⊷
 > ${config.DESCRIPTION}`;
@@ -458,6 +459,7 @@ async (conn, mek, m, { from, quoted, body, isCmd, command, args, q, isGroup, sen
         let dec = `╭━━〔 *Other Menu* 〕━━┈⊷
 ┃◈╭─────────────·๏
 ┃◈┃• timenow
+┃◈┃• bible
 ┃◈┃• date
 ┃◈┃• count
 ┃◈┃• calculate
