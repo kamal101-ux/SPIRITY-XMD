@@ -1,4 +1,4 @@
-comme ça   const { cmd } = require('../command');
+const { cmd } = require('../command');
 const axios = require('axios');
 
 // TA CLÉ API GOOGLE
