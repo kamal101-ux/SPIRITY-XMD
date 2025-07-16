@@ -2,9 +2,9 @@
   "name": "𝐒𝐏𝐈𝐑𝐈𝐓𝐘-𝐗𝐌𝐃",
   "version": "1.0.0",
   "description": "A WhatsApp Bot Created By 𝙳̷𝚊̷𝚛̷𝚔̷-𝙳̷𝙴̷𝚟̷🩸",
-  "main": "index.js",
+  "main": "node.js",
   "scripts": {
-    "start": "pm2 start index.js --deep-monitoring --attach --name 𝐒𝐏𝐈𝐑𝐈𝐓𝐘-𝐗𝐌𝐃",
+    "start": "pm2 start node.js --deep-monitoring --attach --name 𝐒𝐏𝐈𝐑𝐈𝐓𝐘-𝐗𝐌𝐃",
     "stop": "pm2 stop 𝐒𝐏𝐈𝐑𝐈𝐓𝐘-𝐗𝐌𝐃",
     "restart": "pm2 restart 𝐒𝐏𝐈𝐑𝐈𝐓𝐘-𝐗𝐌𝐃"
   },
